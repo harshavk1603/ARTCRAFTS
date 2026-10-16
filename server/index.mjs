@@ -40,14 +40,16 @@ function respond(res, status, payload, headers = {}) {
 
 function cookie(res, token, maxAge) {
   const isProd = (process.env.NODE_ENV === 'production');
-  const sameSite = isProd ? 'None' : 'Lax';
+  const isDecoupled = Boolean(process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes('localhost'));
+  const sameSite = (isProd && isDecoupled) ? 'None' : 'Lax';
   const secure = isProd ? '; Secure' : '';
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${Math.floor(maxAge / 1000)}${secure}`);
 }
 
 function clearCookie(res) {
   const isProd = (process.env.NODE_ENV === 'production');
-  const sameSite = isProd ? 'None' : 'Lax';
+  const isDecoupled = Boolean(process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes('localhost'));
+  const sameSite = (isProd && isDecoupled) ? 'None' : 'Lax';
   const secure = isProd ? '; Secure' : '';
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${secure}`);
 }
@@ -275,14 +277,18 @@ const MIME_TYPES = {
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.pdf': 'application/pdf',
 };
 
-function serveStatic(res, filePath, cacheControl = 'public, max-age=31536000, immutable') {
+function serveStatic(res, filePath, cacheControl = 'public, max-age=31536000, immutable', method = 'GET') {
   if (!existsSync(filePath)) return false;
   const stat = statSync(filePath);
   if (!stat.isFile()) return false;
   const ext = extname(filePath).toLowerCase();
   const mime = MIME_TYPES[ext] || 'application/octet-stream';
   res.writeHead(200, { 'content-type': mime, 'content-length': stat.size, 'cache-control': cacheControl });
-  createReadStream(filePath).pipe(res);
+  if (method !== 'HEAD') {
+    createReadStream(filePath).pipe(res);
+  } else {
+    res.end();
+  }
   return true;
 }
 
@@ -295,7 +301,13 @@ async function route(req, res) {
   const method = req.method || 'GET';
 
   // ── Block access to backups and internal private directories ────────
-  if (path.startsWith('/uploads/backups') || path.startsWith('/data/')) {
+  if (
+    path.startsWith('/uploads/backups') ||
+    path.startsWith('/data/') ||
+    path.startsWith('/app/data/') ||
+    path.includes('.sqlite') ||
+    path.includes('.db')
+  ) {
     res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' }).end('403 Forbidden');
     return;
   }
@@ -970,12 +982,20 @@ async function route(req, res) {
   }
 
   // In production, serve Vite build from dist/
-  if (method === 'GET' && existsSync(resolve(DIST, 'index.html'))) {
+  if (['GET', 'HEAD'].includes(method) && existsSync(resolve(DIST, 'index.html'))) {
     // Try exact file in dist/
-    const filePath = resolve(DIST, path === '/' ? 'index.html' : path.slice(1));
-    if (filePath.startsWith(DIST) && serveStatic(res, filePath, path.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600')) return;
+    const relativePath = path === '/' ? 'index.html' : path.slice(1);
+    const filePath = resolve(DIST, relativePath);
+    if (filePath.startsWith(DIST) && serveStatic(res, filePath, path.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600', method)) {
+      return;
+    }
+    // Missing asset requests with extensions or in /assets/ return 404, not HTML
+    if (path.startsWith('/assets/') || extname(path)) {
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Not found');
+      return;
+    }
     // SPA fallback — serve index.html for React Router deep links
-    serveStatic(res, resolve(DIST, 'index.html'), 'public, max-age=0, must-revalidate');
+    serveStatic(res, resolve(DIST, 'index.html'), 'public, max-age=0, must-revalidate', method);
     return;
   }
 
@@ -990,7 +1010,7 @@ const server = createServer(async (req, res) => {
   res.setHeader('x-content-type-options', 'nosniff');
   res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
   res.setHeader('x-frame-options', 'DENY');
-  res.setHeader('content-security-policy', "default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://api.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; base-uri 'self'; form-action 'self'");
+  res.setHeader('content-security-policy', "default-src 'self'; script-src 'self' https://checkout.razorpay.com https://*.razorpay.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://api.razorpay.com https://*.razorpay.com; frame-src https://api.razorpay.com https://checkout.razorpay.com; base-uri 'self'; form-action 'self'");
   try { await route(req, res); }
   catch (error) {
     const status = Number.isInteger(error.status) ? error.status : 500;

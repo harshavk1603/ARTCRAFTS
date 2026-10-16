@@ -1,8 +1,8 @@
 services:
-  # ── 1. Backend Web Service (Node.js API + Persistent SQLite) ────────
-  # Can also operate as a Unified Single Service (serves dist/ automatically)
+  # ── Unified Render Web Service (Frontend SPA + Node.js API + Persistent SQLite) ──
+  # Serves compiled Vite React 19 frontend (dist/) and native Node.js API from the same domain
   - type: web
-    name: artcrafts-backend
+    name: artcrafts-storefront
     env: node
     plan: starter
     buildCommand: npm ci && npm run build
@@ -17,12 +17,14 @@ services:
         value: production
       - key: DB_PATH
         value: /app/data/artcrafts.sqlite
-      - key: FRONTEND_URL
-        sync: false
+      - key: PORT
+        value: 10000
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: ADMIN_NAME
+        value: ARTCRAFTS Administrator
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
@@ -37,20 +39,9 @@ services:
         sync: false
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: artcrafts-media
       - key: RESEND_API_KEY
         sync: false
-
-  # ── 2. Frontend Static Site (React 19 + Vite 8 SPA) ─────────────────
-  # Optional separate frontend service with global CDN and automated SSL
-  - type: web
-    name: artcrafts-frontend
-    env: static
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_URL
+      - key: NOTIFICATION_FROM_EMAIL
         sync: false

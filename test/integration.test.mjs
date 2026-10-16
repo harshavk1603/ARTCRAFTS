@@ -73,6 +73,15 @@ async function startServer() {
   });
 }
 
+async function stopServer() {
+  if (!serverProcess) return;
+  return new Promise((resolve) => {
+    serverProcess.on('exit', () => resolve());
+    serverProcess.kill('SIGTERM');
+    setTimeout(resolve, 1500);
+  });
+}
+
 async function runTests() {
   console.log('\n🚀 Starting ARTCRAFTS Automated Integration Test Suite...\n');
   await startServer();
@@ -341,13 +350,57 @@ async function runTests() {
     const spaDeepLink = await request('/shop');
     assert(spaDeepLink.status === 200, 'GET /shop (deep link) falls back to index.html for SPA router');
 
+    // ── 11. Security Lockdown for Database Files ─────────────────────
+    console.log('\n11. Security Lockdown for Database Files:');
+    const blockedDb1 = await request('/data/artcrafts.sqlite');
+    assert(blockedDb1.status === 403, 'GET /data/artcrafts.sqlite is blocked with 403 Forbidden');
+    const blockedDb2 = await request('/app/data/artcrafts.sqlite');
+    assert(blockedDb2.status === 403, 'GET /app/data/artcrafts.sqlite is blocked with 403 Forbidden');
+
+    // ── 12. Asset Routing & HEAD Requests ───────────────────────────
+    console.log('\n12. Asset Routing & HEAD Requests:');
+    const missingAsset = await request('/assets/non-existent-script.js');
+    assert(missingAsset.status === 404, 'GET /assets/non-existent-script.js returns 404 Not Found (not SPA fallback)');
+    const headHome = await request('/', { method: 'HEAD' });
+    assert(headHome.status === 200, 'HEAD / returns 200 OK');
+    const headShop = await request('/shop', { method: 'HEAD' });
+    assert(headShop.status === 200, 'HEAD /shop returns 200 OK');
+
+    // ── 13. SQLite Persistence Across Server Restart ─────────────────
+    console.log('\n13. SQLite Persistence Across Server Restart:');
+    const productsBefore = (await request('/api/storefront/products')).json.products.length;
+    const categoriesBefore = (await request('/api/storefront/categories')).json.categories.length;
+
+    // Gracefully stop the server process
+    await stopServer();
+    await new Promise(r => setTimeout(r, 600));
+
+    // Restart server pointing to the exact same database
+    await startServer();
+
+    // Verify idempotent seeding didn't duplicate products or categories
+    const productsAfter = (await request('/api/storefront/products')).json.products.length;
+    const categoriesAfter = (await request('/api/storefront/categories')).json.categories.length;
+    assert(productsAfter === productsBefore, `Products count is identical across restart (${productsAfter})`);
+    assert(categoriesAfter === categoriesBefore, `Categories count is identical across restart (${categoriesAfter})`);
+
+    // Verify existing user account still logs in after restart
+    const loginAfterRestart = await request('/api/auth/login', {
+      method: 'POST',
+      body: { email: testCustomerEmail, password: 'Password123!', role: 'customer' },
+    });
+    assert(loginAfterRestart.status === 200, 'Registered customer credentials persist and log in after server restart');
+
+    // Verify customer's order history survived the restart
+    const restartCookie = loginAfterRestart.headers.get('set-cookie');
+    const ordersAfterRestart = await request('/api/orders', { headers: { cookie: restartCookie } });
+    assert(ordersAfterRestart.status === 200 && ordersAfterRestart.json.orders.length > 0, 'Customer order history persists across server restart');
+
   } catch (err) {
     console.error('Unexpected test error:', err);
     failures++;
   } finally {
-    if (serverProcess) {
-      serverProcess.kill('SIGTERM');
-    }
+    await stopServer();
   }
 
   console.log(`\n══════════════════════════════════════════`);

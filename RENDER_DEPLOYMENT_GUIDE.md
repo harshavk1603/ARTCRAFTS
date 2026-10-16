@@ -33,11 +33,10 @@ ARTCRAFTS is designed to be **Dual-Mode Compatible**. You can deploy it using ei
 1. Log into your [Render Dashboard](https://dashboard.render.com).
 2. Click **New +** in the top navigation bar and select **Blueprint**.
 3. Connect your GitHub repository: `https://github.com/harshavk1603/ARTCRAFTS`.
-4. Render will automatically read `render.yaml` and configure both services:
-   - `artcrafts-backend` (Web Service with 1GB persistent disk at `/app/data`)
-   - `artcrafts-frontend` (Static Site with SPA rewrite rules)
-5. Populate the secret environment variables when prompted by Render (see Section 3).
-6. Click **Apply**.
+4. Render will automatically read `render.yaml` and configure the **Unified Single Web Service**:
+   - `artcrafts-storefront` (Web Service compiling Vite React 19 and running the native Node.js API with a 1GB persistent disk mounted at `/app/data`).
+5. Populate the secret environment variables when prompted by Render (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, Razorpay, Supabase, Resend).
+6. Click **Apply**. Render will build and deploy the entire storefront on a single unified URL!
 
 ---
 

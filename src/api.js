@@ -1,3 +1,5 @@
+const BASE_URL = (import.meta.env?.VITE_API_URL || '').replace(/\/+$/, '');
+
 export async function api(path, options = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = { ...options.headers };
@@ -6,8 +8,12 @@ export async function api(path, options = {}) {
     headers['content-type'] = 'application/json';
   }
 
-  const response = await fetch(path.startsWith('/api/') ? path : `/api/${path}`, {
-    credentials: 'same-origin',
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const apiPath = cleanPath.startsWith('/api/') ? cleanPath : `/api${cleanPath}`;
+  const targetUrl = BASE_URL ? `${BASE_URL}${apiPath}` : apiPath;
+
+  const response = await fetch(targetUrl, {
+    credentials: 'include',
     ...options,
     headers,
     body: isFormData

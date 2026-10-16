@@ -39,13 +39,17 @@ function respond(res, status, payload, headers = {}) {
 }
 
 function cookie(res, token, maxAge) {
-  const secure = (process.env.NODE_ENV === 'production') ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(maxAge / 1000)}${secure}`);
+  const isProd = (process.env.NODE_ENV === 'production');
+  const sameSite = isProd ? 'None' : 'Lax';
+  const secure = isProd ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${Math.floor(maxAge / 1000)}${secure}`);
 }
 
 function clearCookie(res) {
-  const secure = (process.env.NODE_ENV === 'production') ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`);
+  const isProd = (process.env.NODE_ENV === 'production');
+  const sameSite = isProd ? 'None' : 'Lax';
+  const secure = isProd ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${secure}`);
 }
 
 function rateLimit(req, key, max, windowMs) {
@@ -337,11 +341,36 @@ async function route(req, res) {
     return respond(res, 200, { gallery: items });
   }
 
-  // ── CORS / Origin check for unsafe methods ──────────────────────────
+  // ── CORS / Origin check for decoupled deployments (Vercel + Render) ──
+  const origin = req.headers.origin;
+  const sameOrigin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
+  const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+
+  function isAllowedOrigin(testOrigin) {
+    if (!testOrigin) return false;
+    if (testOrigin === sameOrigin) return true;
+    if (frontendUrl && (testOrigin === frontendUrl || testOrigin === frontendUrl.replace(/\/+$/, ''))) return true;
+    if (/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(testOrigin)) return true;
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(testOrigin)) return true;
+    return false;
+  }
+
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('access-control-allow-origin', origin);
+    res.setHeader('access-control-allow-credentials', 'true');
+    res.setHeader('access-control-allow-methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('access-control-allow-headers', 'content-type, authorization, x-requested-with');
+    res.setHeader('vary', 'Origin');
+  }
+
+  if (method === 'OPTIONS') {
+    res.writeHead(204).end();
+    return;
+  }
+
   const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(method);
-  if (unsafe && path !== '/api/webhooks/razorpay' && path !== '/api/payments/webhook' && req.headers.origin) {
-    const expected = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
-    if (req.headers.origin !== expected) throw new HttpError(403, 'Cross-origin request rejected.');
+  if (unsafe && path !== '/api/webhooks/razorpay' && path !== '/api/payments/webhook' && origin) {
+    if (!isAllowedOrigin(origin)) throw new HttpError(403, 'Cross-origin request rejected.');
   }
 
   // ── Read body ───────────────────────────────────────────────────────

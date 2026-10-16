@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.git
+.github
+.agents
+.vscode
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+uploads/*

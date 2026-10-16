@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: artcrafts-storefront
+    env: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: node server/index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 3001
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+    disk:
+      name: artcrafts-data
+      mountPath: /app/data
+      sizeGB: 1

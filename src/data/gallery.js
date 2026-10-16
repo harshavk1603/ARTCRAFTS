@@ -1,0 +1,8 @@
+export const gallery = [
+  { title: 'Tidal color study', category: 'Resin Art', image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=1100&q=85', alt: 'Abstract artwork in warm, fluid colors', description: 'A study in layered color and a hand-finished golden edge.' },
+  { title: 'A little floral note', category: 'Resin Art', image: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=1100&q=85', alt: 'Flowers and books arranged in a quiet reading corner', description: 'Pressed botanicals gathered into a keepsake.' },
+  { title: 'A thoughtful wrap', category: 'Customized Gifts', image: 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=1100&q=85', alt: 'Carefully wrapped handmade gift', description: 'Personal details make every unwrapping a moment.' },
+  { title: 'A calm corner', category: 'Home Décor', image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1100&q=85', alt: 'Warm neutral living space with curated decor', description: 'Small handmade accents for the spaces we love.' },
+  { title: 'Made by hand', category: 'Handmade Crafts', image: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&w=1100&q=85', alt: 'Artisan hands arranging craft supplies', description: 'A glimpse of a slower, more considered process.' },
+  { title: 'Golden hour glow', category: 'Home Décor', image: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=1100&q=85', alt: 'Warm candlelight in a handmade candle jar', description: 'A soft glow, and a vessel to keep.' },
+];

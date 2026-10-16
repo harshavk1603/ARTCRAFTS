@@ -1,6 +1,7 @@
 {
   "name": "artcrafts-storefront",
   "version": "1.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": { "dev": "node scripts/dev.mjs", "dev:frontend": "vite --host 127.0.0.1", "dev:api": "node server/index.mjs", "build": "vite build", "preview": "vite preview", "start": "node server/index.mjs", "test": "node test/integration.test.mjs" },

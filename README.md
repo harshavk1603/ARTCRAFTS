@@ -41,3 +41,8 @@ Checkout is integrated with Razorpay Standard Checkout, but it is disabled until
 This is a local development backend, not a production deployment. Before handling real customers, deploy behind HTTPS, use a production-grade managed database and backups, configure persistent rate limiting, trusted proxy/cookie settings, email notifications, image storage, monitoring, data retention and privacy policies, shipping/tax/refund workflows, and review the application's legal copy. Node's built-in SQLite module is marked active development in current Node documentation; SQLite is suitable for local/single-instance use here, not a multi-instance production store.
 
 Photographs are remote Unsplash samples and artisan/catalog content remains demonstration copy. Replace these with approved business content before launch.
+
+## License
+
+This project is licensed under the terms of the [MIT License](LICENSE).
+Copyright (c) 2026 Harshavardhan Kancharlapalli (ARTCRAFTS).

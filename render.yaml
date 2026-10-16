@@ -1,4 +1,6 @@
 services:
+  # ── 1. Backend Web Service (Node.js API + Persistent SQLite) ────────
+  # Can also operate as a Unified Single Service (serves dist/ automatically)
   - type: web
     name: artcrafts-backend
     env: node
@@ -6,11 +8,13 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: node server/index.mjs
     healthCheckPath: /api/health
+    disk:
+      name: artcrafts-data
+      mountPath: /app/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3001
       - key: DB_PATH
         value: /app/data/artcrafts.sqlite
       - key: FRONTEND_URL
@@ -35,7 +39,18 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-    disk:
-      name: artcrafts-data
-      mountPath: /app/data
-      sizeGB: 1
+
+  # ── 2. Frontend Static Site (React 19 + Vite 8 SPA) ─────────────────
+  # Optional separate frontend service with global CDN and automated SSL
+  - type: web
+    name: artcrafts-frontend
+    env: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false

@@ -85,8 +85,15 @@ function safeEqualHex(a, b) {
 }
 
 function currentUser(req) {
-  const header = req.headers.cookie || '';
-  const token = header.split(';').map(x => x.trim()).find(x => x.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  let token = null;
+  const authHeader = req.headers.authorization || '';
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  }
+  if (!token) {
+    const header = req.headers.cookie || '';
+    token = header.split(';').map(x => x.trim()).find(x => x.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  }
   if (!token) return null;
   const session = db.prepare(`SELECT u.*, s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?`).get(hashToken(token));
   if (!session) return null;
@@ -122,6 +129,7 @@ function createSession(res, user) {
   db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)')
     .run(hashToken(token), user.id, expiresAt, timestamp());
   cookie(res, token, expiresAt - Date.now());
+  return token;
 }
 
 // ── Reservation / stock management ──────────────────────────────────────
@@ -351,6 +359,7 @@ async function route(req, res) {
     if (testOrigin === sameOrigin) return true;
     if (frontendUrl && (testOrigin === frontendUrl || testOrigin === frontendUrl.replace(/\/+$/, ''))) return true;
     if (/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(testOrigin)) return true;
+    if (/^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(testOrigin)) return true;
     if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(testOrigin)) return true;
     return false;
   }
@@ -399,8 +408,8 @@ async function route(req, res) {
     const account = { id: makeId(), email, name, phone: text(body.phone, 32), role: 'customer' };
     try { db.prepare('INSERT INTO users(id,email,name,phone,role,password_salt,password_hash,created_at) VALUES(?,?,?,?,?,?,?,?)').run(account.id, email, name, account.phone, 'customer', salt, hash, timestamp()); }
     catch (error) { if (String(error.message).includes('UNIQUE')) throw new HttpError(409, 'An account with that email already exists.'); throw error; }
-    createSession(res, { ...account });
-    return respond(res, 201, { user: account });
+    const token = createSession(res, { ...account });
+    return respond(res, 201, { user: account, token });
   }
 
   if (path === '/api/auth/login' && method === 'POST') {
@@ -411,12 +420,18 @@ async function route(req, res) {
     const account = db.prepare('SELECT * FROM users WHERE email=? COLLATE NOCASE').get(email);
     const matches = passwordMatches(account, password);
     if (!matches || account.role !== requestedRole) throw new HttpError(401, 'Email, password, or account type is incorrect.');
-    createSession(res, account);
-    return respond(res, 200, { user: publicUser(account) });
+    const token = createSession(res, account);
+    return respond(res, 200, { user: publicUser(account), token });
   }
 
   if (path === '/api/auth/logout' && method === 'POST') {
-    const token = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+    let token = null;
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7).trim();
+    if (!token) {
+      const cookieHeader = req.headers.cookie || '';
+      token = cookieHeader.split(';').map(x => x.trim()).find(x => x.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+    }
     if (token) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hashToken(token));
     clearCookie(res);
     return respond(res, 200, { ok: true });

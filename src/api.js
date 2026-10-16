@@ -1,11 +1,27 @@
 const BASE_URL = (import.meta.env?.VITE_API_URL || '').replace(/\/+$/, '');
 
+export function setAuthToken(token) {
+  if (typeof localStorage !== 'undefined') {
+    if (token) localStorage.setItem('artcrafts-session-token', token);
+    else localStorage.removeItem('artcrafts-session-token');
+  }
+}
+
+export function getAuthToken() {
+  return typeof localStorage !== 'undefined' ? localStorage.getItem('artcrafts-session-token') : null;
+}
+
 export async function api(path, options = {}) {
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers = { ...options.headers };
 
   if (options.body && !isFormData && typeof options.body !== 'string') {
     headers['content-type'] = 'application/json';
+  }
+
+  const token = getAuthToken();
+  if (token && !headers['authorization']) {
+    headers['authorization'] = `Bearer ${token}`;
   }
 
   const cleanPath = path.startsWith('/') ? path : `/${path}`;

@@ -5,7 +5,7 @@ import {
   Trash2, CreditCard, Smartphone, Building2, Truck, Lock, Printer, QrCode,
   ShoppingBag, Sparkles, UserRound, Star, ChevronRight
 } from 'lucide-react';
-import { api, post, put } from '../api';
+import { api, post, put, setAuthToken } from '../api';
 import { useStore } from '../context/StoreContext';
 
 const money = n => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
@@ -58,6 +58,7 @@ export function LoginPage({ initialRole = 'customer' }) {
   }, [requestedRole]);
 
   function fillDemoAdmin() {
+    if (!import.meta.env.DEV) return;
     setRole('admin');
     setEmail('admin@artcrafts.com');
     setPassword('Admin@ArtCrafts2026');
@@ -69,11 +70,13 @@ export function LoginPage({ initialRole = 'customer' }) {
     setBusy(true);
     setError('');
     try {
+      let res;
       if (role === 'customer' && mode === 'register') {
-        await post('auth/register', { name, email, password, phone });
+        res = await post('auth/register', { name, email, password, phone });
       } else {
-        await post('auth/login', { email, password, role });
+        res = await post('auth/login', { email, password, role });
       }
+      if (res?.token) setAuthToken(res.token);
       const account = await refreshUser();
       const next = query.get('next');
       if (role === 'admin') {
@@ -199,16 +202,24 @@ export function LoginPage({ initialRole = 'customer' }) {
               {role === 'admin' ? (
                 <div className="demo-creds-banner">
                   <div className="demo-creds-header">
-                    <b><Lock size={13} /> Admin Credentials Required</b>
-                    <span className="demo-chip">PROTECTED</span>
+                    <b><Lock size={13} /> Studio Administrator Access</b>
+                    <span className="demo-chip">SECURE</span>
                   </div>
-                  <div className="demo-creds-body">
-                    <span>Email: <code>admin@artcrafts.com</code></span>
-                    <span>Pass: <code>Admin@ArtCrafts2026</code></span>
-                  </div>
-                  <button type="button" className="demo-fill-btn" onClick={fillDemoAdmin}>
-                    Auto-fill Demo Admin Credentials
-                  </button>
+                  {import.meta.env.DEV ? (
+                    <>
+                      <div className="demo-creds-body">
+                        <span>Email: <code>admin@artcrafts.com</code></span>
+                        <span>Pass: <code>Admin@ArtCrafts2026</code></span>
+                      </div>
+                      <button type="button" className="demo-fill-btn" onClick={fillDemoAdmin}>
+                        Auto-fill Local Dev Admin
+                      </button>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: '11px', color: 'var(--muted)', margin: '8px 0 0' }}>
+                      Sign in with the administrator credentials configured in your server environment.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p style={{ fontSize: '11px', color: 'var(--muted)', margin: '0 0 16px' }}>

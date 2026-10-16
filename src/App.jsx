@@ -6,7 +6,7 @@ import { categories as seedCategories } from './data/categories';
 import { artisans as seedArtisans } from './data/artisans';
 import { gallery as seedGallery } from './data/gallery';
 import { faqs } from './data/faqs';
-import { api, post, put, patch, del, uploadReferenceImage } from './api';
+import { api, post, put, patch, del, uploadReferenceImage, setAuthToken } from './api';
 import { StoreContext, useStore } from './context/StoreContext';
 import { CheckoutPage, CustomerOnly, CustomerOrders, LoginPage, ProfilePage } from './pages/account.jsx';
 import { PrivacyPolicy, ShippingPolicy, ReturnsPolicy, TermsConditions } from './pages/legal.jsx';
@@ -26,7 +26,7 @@ function App(){
   useEffect(()=>localStorage.setItem('artcrafts-cart',JSON.stringify(items)),[items]);
   useEffect(()=>{Promise.all([api('storefront/products'),api('storefront/categories'),api('storefront/artisans'),api('auth/me')]).then(([p,c,a,auth])=>{setProducts(p.products);setCategories(c.categories);setArtisans(a.artisans);setUser(auth.user)}).catch(error=>console.error('ARTCRAFTS API unavailable:',error)).finally(()=>setAuthReady(true))},[]);
   const refreshUser=async()=>{const result=await api('auth/me');setUser(result.user);return result.user};
-  const logout=async()=>{await post('auth/logout',{});setUser(null)};
+  const logout=async()=>{await post('auth/logout',{}).catch(()=>{});setAuthToken(null);setUser(null)};
   const add=(product,qty=1)=>setItems(curr=>{const old=curr.find(x=>x.id===product.id);return old?curr.map(x=>x.id===product.id?{...x,qty:x.qty+qty}:x):[...curr,{...product,qty}];});
   const value={items,setItems,products,setProducts,categories,setCategories,artisans,setArtisans,add,cartOpen,setCartOpen,user,setUser,authReady,refreshUser,logout};
   return <StoreContext.Provider value={value}><Routes><Route path="/login" element={<LoginPage/>}/><Route path="/admin/login" element={<LoginPage initialRole="admin"/>}/><Route path="/admin/*" element={<AdminGate/>}/><Route path="/*" element={<PublicLayout/>}/></Routes><CartDrawer/></StoreContext.Provider>;

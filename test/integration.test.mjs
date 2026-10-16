@@ -129,11 +129,15 @@ async function runTests() {
     assert(reg.status === 201, 'POST /api/auth/register returns 201 Created');
     const cookieHeader = reg.headers.get('set-cookie');
     assert(Boolean(cookieHeader && cookieHeader.includes('artcrafts_session')), 'Session cookie was issued');
+    assert(Boolean(reg.json?.token), 'Session token returned in registration JSON payload');
     const authHeaders = { cookie: cookieHeader };
 
     const profile = await request('/api/profile', { headers: authHeaders });
     assert(profile.status === 200, 'GET /api/profile returns 200 with session');
     assert(profile.json?.user?.email === testCustomerEmail, 'profile email matches registered user');
+
+    const bearerProfile = await request('/api/profile', { headers: { authorization: `Bearer ${reg.json.token}` } });
+    assert(bearerProfile.status === 200, 'GET /api/profile works via Authorization: Bearer token header');
 
     const addr = await request('/api/profile/addresses', {
       method: 'POST',

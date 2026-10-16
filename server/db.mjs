@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, randomBytes, scryptSync } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { products as initialProducts } from '../src/data/products.js';
 import { categories as initialCategories } from '../src/data/categories.js';
@@ -9,7 +9,8 @@ import { artisans as initialArtisans } from '../src/data/artisans.js';
 import { gallery as initialGallery } from '../src/data/gallery.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const dbPath = resolve(here, '..', process.env.DB_PATH || 'data/artcrafts.sqlite');
+const rawDbPath = (process.env.DB_PATH || 'data/artcrafts.sqlite').trim();
+const dbPath = isAbsolute(rawDbPath) ? rawDbPath : resolve(here, '..', rawDbPath);
 mkdirSync(dirname(dbPath), { recursive: true });
 export const db = new DatabaseSync(dbPath, { timeout: 5000 });
 
@@ -136,11 +137,21 @@ export function provisionAdminFromEnvironment() {
   const password = process.env.ADMIN_PASSWORD?.trim();
   const name = process.env.ADMIN_NAME?.trim() || 'ARTCRAFTS Administrator';
 
+  const adminCount = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role='admin'").get().count;
+
   if (!email || !password) {
-    console.warn('⚠  ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env to provision the admin account.');
+    if (adminCount === 0 && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: ADMIN_EMAIL and ADMIN_PASSWORD environment variables are mandatory in production to provision the initial administrator account.');
+    }
+    if (adminCount === 0) {
+      console.warn('⚠  ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env to provision the admin account.');
+    }
     return;
   }
   if (password.length < 10) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: ADMIN_PASSWORD must be at least 10 characters long.');
+    }
     console.warn('⚠  ADMIN_PASSWORD must be at least 10 characters long.');
     return;
   }

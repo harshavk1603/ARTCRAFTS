@@ -1,33 +1,23 @@
-# Stage 1: Build the Vite frontend application
-FROM node:22-alpine AS builder
+# ARTCRAFTS Backend API – Production Container
+# Frontend is deployed separately on Vercel
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-# Stage 2: Production runtime with native SQLite (node:sqlite)
 FROM node:22-alpine
 
 WORKDIR /app
 ENV NODE_ENV=production
-ENV API_PORT=3001
-ENV PORT=3001
+ENV PORT=10000
 
-# Copy package descriptors and install only production dependencies (if any)
+# Copy package descriptors and install dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev 2>/dev/null || npm ci
 
-# Copy build output, server modules, and initial data
-COPY --from=builder /app/dist ./dist
+# Copy server source and seed data
 COPY server ./server
 COPY src/data ./src/data
 
-# Ensure data and uploads directories exist with proper write permissions
-RUN mkdir -p data uploads && chmod 777 data uploads
+# Ensure data and uploads directories exist
+RUN mkdir -p data uploads && chmod 755 data uploads
 
-EXPOSE 3001
+EXPOSE 10000
 
 CMD ["node", "server/index.mjs"]

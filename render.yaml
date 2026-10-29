@@ -1,24 +1,25 @@
+# Render Blueprint – ARTCRAFTS Backend API
+# Frontend is deployed separately on Vercel
 services:
-  # ── Unified Render Web Service (Frontend SPA + Node.js API + Persistent SQLite) ──
-  # Serves compiled Vite React 19 frontend (dist/) and native Node.js API from the same domain
   - type: web
-    name: artcrafts-storefront
-    env: node
+    name: artcrafts-api
+    runtime: node
     plan: starter
-    buildCommand: npm ci && npm run build
+    region: oregon
+    buildCommand: npm ci
     startCommand: node server/index.mjs
     healthCheckPath: /api/health
-    disk:
-      name: artcrafts-data
-      mountPath: /app/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DB_PATH
-        value: /app/data/artcrafts.sqlite
       - key: PORT
         value: 10000
+      - key: FRONTEND_URL
+        sync: false
+      - key: DB_PATH
+        value: /opt/render/project/data/artcrafts.sqlite
+      - key: SESSION_SECRET
+        generateValue: true
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
@@ -45,3 +46,7 @@ services:
         sync: false
       - key: NOTIFICATION_FROM_EMAIL
         sync: false
+    disk:
+      name: artcrafts-data
+      mountPath: /opt/render/project/data
+      sizeGB: 1

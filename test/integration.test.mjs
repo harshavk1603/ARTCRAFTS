@@ -49,6 +49,7 @@ async function startServer() {
       cwd: root,
       env: {
         ...process.env,
+        PORT: String(TEST_PORT),
         API_PORT: String(TEST_PORT),
         NODE_ENV: 'test',
         ADMIN_EMAIL: 'admin@artcrafts.com',
@@ -94,6 +95,21 @@ async function runTests() {
     assert(health.status === 200, 'GET /api/health returns 200 OK');
     assert(health.json?.status === 'ok', 'health status is "ok"');
     assert(health.json?.database === 'ok', 'database status is "ok"');
+
+    const healthCors = await request('/api/health', { headers: { origin: 'http://localhost:5173' } });
+    assert(healthCors.headers.get('access-control-allow-origin') === 'http://localhost:5173', 'CORS allows the localhost dev origin on /api/health');
+    const galleryCors = await request('/api/gallery', { headers: { origin: 'http://localhost:5173' } });
+    assert(galleryCors.headers.get('access-control-allow-origin') === 'http://localhost:5173', 'CORS applies to /api/gallery');
+    const payConfigCors = await request('/api/payments/config', { headers: { origin: 'http://localhost:5173' } });
+    assert(payConfigCors.headers.get('access-control-allow-origin') === 'http://localhost:5173', 'CORS applies to /api/payments/config');
+    const evilCors = await request('/api/health', { headers: { origin: 'https://evil.example' } });
+    assert(!evilCors.headers.get('access-control-allow-origin'), 'CORS headers are not sent to unknown origins');
+    const evilWrite = await request('/api/contact', {
+      method: 'POST',
+      headers: { origin: 'https://evil.example' },
+      body: { name: 'Blocked', email: 'blocked@example.com', message: 'Should not be stored' },
+    });
+    assert(evilWrite.status === 403, 'Unsafe cross-origin requests from unknown origins are rejected with 403');
 
     // ── 2. Payment Config ───────────────────────────────────────────
     console.log('\n2. Payment Configuration:');
@@ -199,6 +215,7 @@ async function runTests() {
         cwd: root,
         env: {
           ...process.env,
+          PORT: String(TEST_PORT + 1),
           API_PORT: String(TEST_PORT + 1),
           NODE_ENV: 'production',
           ADMIN_EMAIL: 'admin@artcrafts.com',
@@ -215,6 +232,9 @@ async function runTests() {
     try {
       const prodPayConfig = await fetch(`http://127.0.0.1:${TEST_PORT + 1}/api/payments/config`).then(r => r.json());
       assert(prodPayConfig.allowDevSimulation === false, 'Production payments config disables dev simulation');
+
+      const prodRoot = await fetch(`http://127.0.0.1:${TEST_PORT + 1}/`);
+      assert(prodRoot.status === 404, 'Production server does not serve the Vite build (Vercel owns the frontend)');
 
       const prodSimPay = await fetch(`http://127.0.0.1:${TEST_PORT + 1}/api/checkout/pay`, {
         method: 'POST',
@@ -366,8 +386,8 @@ async function runTests() {
     const headShop = await request('/shop', { method: 'HEAD' });
     assert(headShop.status === 200, 'HEAD /shop returns 200 OK');
 
-    // ── 13. SQLite Persistence Across Server Restart ─────────────────
-    console.log('\n13. SQLite Persistence Across Server Restart:');
+    // ── 13. Database Persistence Across Server Restart ──────────────
+    console.log('\n13. Database Persistence Across Server Restart:');
     const productsBefore = (await request('/api/storefront/products')).json.products.length;
     const categoriesBefore = (await request('/api/storefront/categories')).json.categories.length;
 
@@ -375,7 +395,7 @@ async function runTests() {
     await stopServer();
     await new Promise(r => setTimeout(r, 600));
 
-    // Restart server pointing to the exact same database
+    // Restart server against the same Postgres database
     await startServer();
 
     // Verify idempotent seeding didn't duplicate products or categories

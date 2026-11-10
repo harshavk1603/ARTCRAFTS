@@ -19,6 +19,10 @@ export function supabaseConfigured() {
 
 const bucket = () => env('SUPABASE_STORAGE_BUCKET') || 'artcrafts-media';
 
+// Public base URL used to turn local /uploads paths into absolute URLs that
+// still resolve when the frontend is hosted on another domain (Vercel).
+const publicBaseUrl = () => (env('API_PUBLIC_URL') || env('RENDER_EXTERNAL_URL')).replace(/\/+$/, '');
+
 async function sbFetch(path, options = {}) {
   const url = `${env('SUPABASE_URL')}${path}`;
   const key = secretKey();
@@ -91,7 +95,7 @@ export async function uploadFile(buffer, mimeType, folder = 'uploads') {
   const localDir = resolve(root, 'uploads', folder);
   mkdirSync(localDir, { recursive: true });
   writeFileSync(resolve(localDir, filename), buffer);
-  return { url: `/uploads/${objectPath}`, storage: 'local' };
+  return { url: `${publicBaseUrl()}/uploads/${objectPath}`, storage: 'local' };
 }
 
 /**

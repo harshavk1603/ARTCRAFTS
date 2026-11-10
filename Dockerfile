@@ -5,18 +5,22 @@ FROM node:22-alpine
 
 WORKDIR /app
 ENV NODE_ENV=production
+ENV SERVE_FRONTEND=0
+# Render injects PORT at runtime; 10000 is only a local default.
 ENV PORT=10000
 
-# Copy package descriptors and install dependencies
+# Install production dependencies only (pg). The frontend is built by Vercel.
 COPY package*.json ./
-RUN npm ci --omit=dev 2>/dev/null || npm ci
+RUN npm ci --omit=dev
 
-# Copy server source and seed data
+# Copy server source, Supabase schema, and seed data
 COPY server ./server
+COPY supabase ./supabase
 COPY src/data ./src/data
 
-# Ensure data and uploads directories exist
-RUN mkdir -p data uploads && chmod 755 data uploads
+# Uploads is the only writable runtime path (Supabase Storage is preferred).
+RUN mkdir -p uploads && chown -R node:node /app
+USER node
 
 EXPOSE 10000
 

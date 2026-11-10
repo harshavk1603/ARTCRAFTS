@@ -1,25 +1,28 @@
 # Render Blueprint – ARTCRAFTS Backend API
-# Frontend is deployed separately on Vercel
+# Frontend is deployed separately on Vercel. Data and images live in Supabase,
+# so no persistent disk is required.
 services:
   - type: web
     name: artcrafts-api
     runtime: node
-    plan: starter
+    plan: free
     region: oregon
-    buildCommand: npm ci
+    buildCommand: npm ci --omit=dev
     startCommand: node server/index.mjs
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: SERVE_FRONTEND
+        value: "0"
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: FRONTEND_URL
         sync: false
-      - key: DB_PATH
-        value: /opt/render/project/data/artcrafts.sqlite
-      - key: SESSION_SECRET
-        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: PG_POOL_MAX
+        value: "5"
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
@@ -36,17 +39,9 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: SUPABASE_SECRET_KEY
-        sync: false
-      - key: SUPABASE_PUBLISHABLE_KEY
-        sync: false
       - key: SUPABASE_STORAGE_BUCKET
         value: artcrafts-media
       - key: RESEND_API_KEY
         sync: false
       - key: NOTIFICATION_FROM_EMAIL
         sync: false
-    disk:
-      name: artcrafts-data
-      mountPath: /opt/render/project/data
-      sizeGB: 1

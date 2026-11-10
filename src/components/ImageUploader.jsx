@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Check, Image as ImageIcon, Loader2, Link2 } from 'lucide-react';
-import { api } from '../api';
+import { api, mediaUrl } from '../api';
 
 /**
  * Boutique ImageUploader component.
@@ -47,8 +47,9 @@ export function ImageUploader({
       });
 
       if (res?.url) {
-        onChange(res.url);
-        setUrlInput(res.url);
+        const url = mediaUrl(res.url);
+        onChange(url);
+        setUrlInput(url);
       } else {
         throw new Error('Upload succeeded but no URL was returned.');
       }
@@ -109,7 +110,7 @@ export function ImageUploader({
       {value ? (
         <div className="uploader-preview-box">
           <img
-            src={value}
+            src={mediaUrl(value)}
             alt="Preview"
             className="uploader-preview-img"
             onError={(e) => {

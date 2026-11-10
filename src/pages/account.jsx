@@ -5,7 +5,7 @@ import {
   Trash2, CreditCard, Smartphone, Building2, Truck, Lock, Printer, QrCode,
   ShoppingBag, Sparkles, UserRound, Star, ChevronRight
 } from 'lucide-react';
-import { api, post, put, setAuthToken } from '../api';
+import { api, post, put, setAuthToken, mediaUrl } from '../api';
 import { useStore } from '../context/StoreContext';
 
 const money = n => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
@@ -1304,7 +1304,7 @@ export function CheckoutPage() {
 
           {items.map(item => (
             <div className="checkout-item" key={item.id}>
-              <img src={item.images?.[0]} alt={item.name} />
+              <img src={mediaUrl(item.images?.[0])} alt={item.name} />
               <div>
                 <b>{item.name}</b>
                 <small>Qty: {item.qty} · Handcrafted</small>

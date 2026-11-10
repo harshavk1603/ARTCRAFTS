@@ -6,14 +6,14 @@ import { categories as seedCategories } from './data/categories';
 import { artisans as seedArtisans } from './data/artisans';
 import { gallery as seedGallery } from './data/gallery';
 import { faqs } from './data/faqs';
-import { api, post, put, patch, del, uploadReferenceImage, setAuthToken } from './api';
+import { api, post, put, patch, del, uploadReferenceImage, setAuthToken, mediaUrl } from './api';
 import { StoreContext, useStore } from './context/StoreContext';
 import { CheckoutPage, CustomerOnly, CustomerOrders, LoginPage, ProfilePage } from './pages/account.jsx';
 import { PrivacyPolicy, ShippingPolicy, ReturnsPolicy, TermsConditions } from './pages/legal.jsx';
 import { ImageUploader } from './components/ImageUploader.jsx';
 
 const money = n => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0);
-const img = (src, alt, props={}) => <img src={src} alt={alt} loading="lazy" onError={e => { e.currentTarget.src='https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=900&q=75'; }} {...props}/>;
+const img = (src, alt, props={}) => <img src={mediaUrl(src)} alt={alt} loading="lazy" onError={e => { e.currentTarget.src='https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=900&q=75'; }} {...props}/>;
 
 function App(){
   const [items,setItems]=useState(()=>JSON.parse(localStorage.getItem('artcrafts-cart')||'[]'));
@@ -583,7 +583,7 @@ function AdminOrders(){
               {o.address&&<small style={{display:'block',color:'var(--muted)',fontSize:'10px'}}>Shipping: {o.address.line1}, {o.address.city}, {o.address.state} {o.address.postalCode}</small>}
               {o.referenceImageUrl&&(
                 <div style={{marginTop:'6px',display:'flex',alignItems:'center',gap:'8px'}}>
-                  <img src={o.referenceImageUrl} alt="Reference" style={{width:'40px',height:'40px',objectFit:'cover',border:'1px solid var(--border)'}}/>
+                  <img src={mediaUrl(o.referenceImageUrl)} alt="Reference" style={{width:'40px',height:'40px',objectFit:'cover',border:'1px solid var(--border)'}}/>
                   <a href={o.referenceImageUrl} target="_blank" rel="noreferrer" style={{fontSize:'10px',color:'var(--gold)',display:'inline-flex',alignItems:'center',gap:'3px'}}>
                     <ExternalLink size={11}/> View Reference Image
                   </a>

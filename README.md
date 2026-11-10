@@ -2,31 +2,37 @@
 
 A full-stack handmade arts & crafts e-commerce storefront with React 19 frontend and Node.js 22 API backend.
 
-**Architecture**: React SPA on **Vercel** (frontend) + Node.js API on **Render** (backend) with SQLite, Supabase Storage, Razorpay payments, and Resend emails.
+**Architecture**: React SPA on **Vercel** (frontend) + Node.js API on **Render** (backend) with Supabase Postgres and Storage, Razorpay payments, and Resend emails.
 
 ## Requirements
 
-- Node.js 22.0 or newer (the API uses the built-in `node:sqlite` module)
-- npm or pnpm
+- Node.js 22.12 or newer
+- npm (the repo ships a single `package-lock.json`)
 
 ## Quick Start (Local Development)
 
 ```bash
 # 1. Install dependencies
-npm install
+npm ci
 
-# 2. Copy environment config
+# 2. Copy environment config, then add Supabase pooler connection details
 cp .env.example .env
-# Edit .env — set ADMIN_EMAIL and ADMIN_PASSWORD (≥10 chars)
+# Set DATABASE_URL, ADMIN_EMAIL, and ADMIN_PASSWORD (≥10 chars)
 
-# 3. Start both frontend and backend
+# 3. Create the Supabase tables and seed the catalog on first API launch
+npm run supabase:migrate
+
+# Optional: import existing local data before starting the app (target tables must be empty)
+npm run supabase:import-sqlite
+
+# 4. Start both frontend and backend
 npm run dev
 
-# 4. Open http://127.0.0.1:5173
+# 5. Open http://127.0.0.1:5173
 #    API runs on port 3001, Vite proxies /api automatically
 ```
 
-The API creates `data/artcrafts.sqlite` and seeds the catalog on first launch.
+The API uses Supabase Postgres for accounts, sessions, products, addresses, orders, and messages, and Supabase Storage for images. Render is stateless: no persistent disk is required. If you are transferring an existing local store, run `npm run supabase:import-sqlite` after the schema migration and before the API's first launch against that Supabase project.
 
 ## Deployment
 
@@ -41,7 +47,7 @@ The API creates `data/artcrafts.sqlite` and seeds the catalog on first launch.
 
 1. **Render** (backend): Connect repo → Render auto-detects `render.yaml` → set env vars → deploy
 2. **Vercel** (frontend): Import repo → set `VITE_API_URL` to your Render URL → deploy
-3. On Render, set `FRONTEND_URL` to your Vercel URL → redeploy
+3. On Render, set `FRONTEND_URL` to your exact Vercel origin (comma-separated for previews/custom domains) → redeploy
 
 ## Features
 
@@ -50,10 +56,10 @@ The API creates `data/artcrafts.sqlite` and seeds the catalog on first launch.
 - 🎨 Custom order request form with reference image upload
 - 🛒 Full checkout with Razorpay (UPI, Cards, Net Banking) + COD
 - 📦 Admin dashboard with product/inventory/order/artisan/gallery management
-- 🖼️ Image uploads via Supabase Storage (local disk fallback)
+- 🖼️ Image uploads via Supabase Storage (local disk fallback for development)
 - 📧 Email notifications via Resend (order confirmations, enquiries)
 - 🔒 Server-side auth with secure session cookies
-- 💾 SQLite database with WAL mode and automatic seeding
+- 💾 Supabase Postgres database with automatic catalog seeding
 
 ## Scripts
 
@@ -68,8 +74,8 @@ The API creates `data/artcrafts.sqlite` and seeds the catalog on first launch.
 ## Tech Stack
 
 - **Frontend**: React 19, React Router 7, Vite 8, Lucide Icons
-- **Backend**: Node.js 22 (zero dependencies — native HTTP, SQLite, crypto)
-- **Database**: SQLite via `node:sqlite` (built-in)
+- **Backend**: Node.js 22, native HTTP, PostgreSQL client
+- **Database**: Supabase Postgres
 - **Storage**: Supabase Storage / local disk
 - **Payments**: Razorpay Standard Checkout
 - **Email**: Resend API
